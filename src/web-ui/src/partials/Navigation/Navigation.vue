@@ -5,8 +5,8 @@
       <ShopDropdown class="shop mx-lg-2"></ShopDropdown>
       <Search class="search mx-lg-4"></Search>
       <UserDropdown class="user-dropdown"></UserDropdown>
-      <NavSeparator class="d-none d-lg-block mx-2"></NavSeparator>
-      <SupportLink class="support"></SupportLink>
+      <!-- <NavSeparator class="d-none d-lg-block mx-2"></NavSeparator> -->
+      <!-- <SupportLink class="support"></SupportLink> -->
       <NavSeparator class="sep-2 mx-2"></NavSeparator>
       <CartLink class="cart"></CartLink>
     </div>
@@ -28,7 +28,7 @@ export default {
     HomeLink,
     ShopDropdown,
     Search,
-    SupportLink,
+    // SupportLink,
     NavSeparator,
     CartLink,
     UserDropdown,
@@ -79,12 +79,12 @@ export default {
 
 .nav-contents {
   display: grid;
-  grid-template-columns: repeat(2, auto) auto 1fr auto repeat(3, auto);
+  grid-template-columns: repeat(3, auto) auto 1fr auto repeat(3, auto);
   grid-template-rows: repeat(2, auto);
   grid-row-gap: 10px;
   /* let second row components take more space if they need to */
   grid-template-areas:
-    'Shop Logo . . . Support Sep2 Cart'
+    'Shop Logo UserSelection . . Support Sep2 Cart'
     'UserDropdown UserDropdown UserDropdown . Search Search Search Search';
 }
 

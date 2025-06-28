@@ -23,7 +23,7 @@
 
     <ConfirmationModal></ConfirmationModal>
 
-    <DemoGuideButton v-if="showDemoGuide" class="demo-guide-button"></DemoGuideButton>
+    <DemoGuideButton v-if="false" class="demo-guide-button"></DemoGuideButton>
   </div>
 </template>
 

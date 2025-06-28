@@ -1,9 +1,9 @@
 <template>
   <footer>
     <div class="justify-content-center d-flex align-items-center">
-      <div class="rds">Retail Demo Store</div>
+      <!-- <div class="rds">Retail Demo Store</div>
       <div class="separator mx-2" aria-hidden></div>
-      <PoweredByAWS class="img"></PoweredByAWS>
+      <PoweredByAWS class="img"></PoweredByAWS> -->
     </div>
 
     <TermsAndConditions></TermsAndConditions>
@@ -11,12 +11,12 @@
 </template>
 
 <script>
-import PoweredByAWS from '@/components/PoweredByAWS/PoweredByAWS.vue';
+// import PoweredByAWS from '@/components/PoweredByAWS/PoweredByAWS.vue';
 import TermsAndConditions from '@/partials/TermsAndConditions/TermsAndConditions.vue';
 
 export default {
   name: 'Footer',
-  components: { PoweredByAWS, TermsAndConditions },
+  components: {  TermsAndConditions },
 };
 </script>
 

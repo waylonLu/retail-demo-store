@@ -6,11 +6,18 @@ from flask_cors import CORS
 from werkzeug.exceptions import BadRequest, UnsupportedMediaType, NotFound, Unauthorized
 from botocore.exceptions import BotoCoreError
 from http import HTTPStatus
+from datetime import datetime
 import json
 import boto3
+import os
+import uuid
 
 import products_service.products as product_service
 from products_service import auth
+
+personalize_event = boto3.Session(aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
+                           aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY'), 
+                           region_name=os.environ.get('AWS_DEFAULT_REGION')).client('personalize-events')
 
 cognito_idp = boto3.client('cognito-idp')
 
@@ -45,12 +52,31 @@ def get_products_by_id(product_ids):
         return jsonify(products), 200
 
     user = None
+    user_id = request.args.get('userId')
+    event_type = request.args.get('behaviorType')
     # If the personalization parameter is passed in then Bedrock is called for personalised product descriptions       
     if request.args.get('personalized') == 'true':
         cognito_authentication_provider = request.headers.get('cognitoAuthenticationProvider')
         user = auth.auth_user(cognito_authentication_provider)
     
     product = product_service.get_product_by_id(product_ids[0], should_fully_qualify_image_urls(), user)
+    if product and event_type:
+        temp_id = str(uuid.uuid4())
+        personalize_event.put_events(
+            trackingId=os.environ.get('AWS_PERSONALIZE_TRACKING_ID'),
+            userId=user_id if user_id else temp_id,
+            sessionId=str(uuid.uuid5(uuid.NAMESPACE_DNS, str(user_id))) if user_id else temp_id,
+            eventList=[
+                {
+                    'eventType': event_type,
+                    'itemId': product.get('id'),
+                    'sentAt': datetime.now(),
+                    'properties': json.dumps({
+                        'DISCOUNT': 'No'
+                    })
+                },
+            ]
+        )
     if not product:
         raise NotFound
 
@@ -67,6 +93,32 @@ def update_products_by_id(product_id):
     product_service.update_product(existing_product, product)
     
     return jsonify(product), 200
+
+@api.route('/products/id/<product_id>/add_to_cart_event', methods=['GET'])
+def add_to_cart_event_products_by_id(product_id):
+    user_id = request.args.get('userId')
+    event_type = request.args.get('behaviorType')
+    
+    product = product_service.get_product_by_id(product_id, should_fully_qualify_image_urls(), None)
+    if product and event_type:
+        temp_id = str(uuid.uuid4())
+        personalize_event.put_events(
+            trackingId=os.environ.get('AWS_PERSONALIZE_TRACKING_ID'),
+            userId=user_id if user_id else temp_id,
+            sessionId=str(uuid.uuid5(uuid.NAMESPACE_DNS, str(user_id))) if user_id else temp_id,
+            eventList=[
+                {
+                    'eventType': event_type,
+                    'itemId': product.get('id'),
+                    'sentAt': datetime.now(),
+                    'properties': json.dumps({
+                        'DISCOUNT': 'No'
+                    })
+                },
+            ]
+        )
+
+    return jsonify("Success"), 200
 
 @api.route('/products/id/<product_ids>', methods=['DELETE'])
 def delete_products_by_id(product_ids):

@@ -3,7 +3,7 @@
 import { get, post, put } from 'aws-amplify/api';
 
 const resource = "/orders";
-const apiName = 'demoServices';
+const apiName = 'ordersService';
 
 export default {
     async get() {

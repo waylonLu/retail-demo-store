@@ -46,7 +46,6 @@
 
 <script>
 import { mapState, mapActions } from 'vuex';
-import { signOut } from 'aws-amplify/auth';
 import swal from 'sweetalert';
 
 import { Modals } from '@/partials/AppModal/config';
@@ -95,11 +94,10 @@ export default {
       this.openModal(Modals.ShopperSelect);
     },
     signOut() {
-      signOut({ global: true })
-        .then(() => {
-          swal('You have been logged out!');
-        })
-        .catch(swal);
+      // 自定义注销逻辑，不依赖 Amplify 的 signOut 方法
+      this.$store.commit('setUser', null);
+      this.$router.push({ path: '/auth' });
+      swal('You have been logged out!');
     },
   },
 };

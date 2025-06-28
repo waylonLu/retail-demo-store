@@ -157,12 +157,12 @@ const RoomGenerator = () => import('@/public/RoomGenerator.vue')
 // Routes
 const router = createRouter({
   routes: [
-    {
-      path: '/welcome',
-      name: 'Welcome',
-      component: Welcome,
-      meta: { requiresAuth: false },
-    },
+    // {
+    //   path: '/welcome',
+    //   name: 'Welcome',
+    //   component: Welcome,
+    //   meta: { requiresAuth: false },
+    // },
     {
       path: '/',
       name: 'Main',

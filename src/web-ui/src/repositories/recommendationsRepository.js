@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT-0
 import { get, post } from 'aws-amplify/api';
 
-const apiName = 'demoServices';
+const apiName = 'recommendationsService';
 
 const popular = "/popular"
 const related = "/related"

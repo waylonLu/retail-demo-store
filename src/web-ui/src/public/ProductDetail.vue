@@ -197,6 +197,10 @@ export default {
       this.quantity = 1;
     },
     async addProductToCart() {
+      console.log('user: ' + JSON.stringify(this.user))
+      console.log('cart: ' + JSON.stringify(this.cart))
+      console.log('product: ' + this.$route.params.id)
+      this.addPersonalizeEvent(this.$route.params.id, this.personalizeUserID, 'AddToCart');
       await this.addToCart({
         product: {
           ...this.product,
@@ -224,7 +228,8 @@ export default {
       this.isDescriptionPersonalized = true
     },
     async fetchData() {
-      await this.getProductByID(this.$route.params.id);
+      console.log("userId:" + this.personalizeUserID)
+      await this.getProductByID(this.$route.params.id, null, this.personalizeUserID, 'View');
 
       this.fenixcurrentvariant = this.product.id;
 

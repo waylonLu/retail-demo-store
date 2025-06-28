@@ -26,13 +26,14 @@ import requests
 import random
 import logging
 from datetime import datetime
+import time
 
 # X-ray setup
 patch_all()
 
 NUM_DISCOUNTS = 2
 
-EXPERIMENTATION_LOGGING = True
+EXPERIMENTATION_LOGGING = False
 DEBUG_LOGGING = True
 
 random.seed(42)  # Keep our demonstration deterministic
@@ -44,11 +45,20 @@ personalize_meta_cache = ExpiringDict(2 * 60 * 60)
 
 servicediscovery = boto3.client('servicediscovery')
 personalize = boto3.client('personalize')
-personalize_runtime = boto3.client('personalize-runtime')
 ssm = boto3.client('ssm')
 codepipeline = boto3.client('codepipeline')
 sts = boto3.client('sts')
 cw_events = boto3.client('events')
+# personalize_runtime = boto3.client('personalize-runtime')
+
+personalize_runtime = boto3.Session(aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
+                           aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY'), 
+                           region_name=os.environ.get('AWS_DEFAULT_REGION')).client('personalize-runtime')
+
+personalize_v2_campaign_arn = os.environ.get('AWS_PERSONALIZE_V2_CAMPAIGN_ARN')
+filter_ssm=os.environ.get('AWS_PERSONALIZE_FILTER')
+promotion_arn=os.environ.get('AWS_PERSONALIZE_PROMOTION_ARN')
+popular_filter_arn = os.environ.get('AWS_PERSONALIZE_ITEM_POPULARITY_FILTER_ARN')
 
 # SSM parameter name for the Personalize filter for purchased and c-store items
 filter_purchased_param_name = '/retaildemostore/personalize/filters/filter-purchased-arn'
@@ -378,44 +388,40 @@ def related():
         raise BadRequest('numResults must be greater than zero')
     if num_results > 100:
         raise BadRequest('numResults must be less than 100')
-
-    # The default filter includes products from the same category as the current item.
-    filter_ssm = request.args.get('filter', filter_include_categories_param_name)
-    # We have short names for these filters
-    if filter_ssm == 'cstore':
-        filter_ssm = filter_cstore_param_name
-    elif filter_ssm == 'purchased':
-        filter_ssm = filter_purchased_param_name
-    app.logger.info("Filter SSM for /related: %s", filter_ssm)
-
+    
     # Determine name of feature where related items are being displayed
     feature = request.args.get('feature')
 
     fully_qualify_image_urls = request.args.get('fullyQualifyImageUrls', '0').lower() in [ 'true', 't', '1']
 
     try:
-        # If a user ID is provided, automatically perform reranking of related items to personalize items (composite use case).
-        if user_id:
-            rerank_items = True
-            related_count = num_results * 3
-        else:
-            rerank_items = False
-            related_count = num_results
-
-        items, resp_headers = get_products(
-            related_items_recipe = True,
-            feature = feature,
-            user_id = user_id,
-            current_item_id = current_item_id,
-            num_results = related_count,
-            default_inference_arn_param_name='/retaildemostore/personalize/related-items-arn',
-            default_filter_arn_param_name=filter_ssm,
-            fully_qualify_image_urls = fully_qualify_image_urls
+        response = personalize_runtime.get_recommendations(
+            campaignArn = personalize_v2_campaign_arn,
+            userId=user_id,
+            itemId = current_item_id,
+            numResults = num_results,
+            context={
+                'TIMESTAMP': str(int(time.time())),
+                'EVENT_TYPE': 'View'
+            }
         )
+        items = response['itemList']
+        item_ids = [item['itemId'] for item in items]
+        
+        resp_headers={}
+        resp_headers['X-Related-Items-Theme'] = "related_items_theme"
+        resp_headers["X-Personalize-Recipe"] = "arn:aws:personalize:::recipe/aws-personalize-v2"
 
-        if rerank_items and "X-Related-Items-Theme" not in resp_headers:
-            app.logger.info('Reranking related items to personalize order for user %s', user_id)
-            items, resp_headers = get_ranking(user_id, items, feature = None, resp_headers = resp_headers)
+        products = fetch_product_details(item_ids, fully_qualify_image_urls)
+        for item in items:
+            item_id = item['itemId']
+
+            product = next((p for p in products if p['id'] == item_id), None)
+            item.update({
+                'product': product
+            })
+
+            item.pop('itemId')
 
         items = items[0:num_results]    # Trim back down to the requested number of items (if over-sampled above).
 
@@ -442,8 +448,6 @@ def recommendations():
     if not user_id:
         raise BadRequest('userID is required')
 
-    current_item_id = request.args.get('currentItemID')
-
     num_results = request.args.get('numResults', default = 25, type = int)
     if num_results < 1:
         raise BadRequest('numResults must be greater than zero')
@@ -454,37 +458,38 @@ def recommendations():
     feature = request.args.get('feature')
 
     # The default filter is the not-already-purchased filter
-    filter_ssm = request.args.get('filter', filter_purchased_param_name)
-    # We have short names for these filters
-    if filter_ssm == 'cstore':
-        filter_ssm = filter_cstore_param_name
-    elif filter_ssm == 'purchased':
-        filter_ssm = filter_purchased_param_name
-    app.logger.info(f"Filter SSM for /recommendations: {filter_ssm}")
-
     fully_qualify_image_urls = request.args.get('fullyQualifyImageUrls', '0').lower() in [ 'true', 't', '1']
 
-    promotion = None
-    promotion_filter_arn = get_parameter_values(promotion_filter_param_name)[0]
-    if promotion_filter_arn:
-        promotion = {
-            'name': 'promotedItem',
-            'percentPromotedItems': 25,
-            'filterArn': promotion_filter_arn
-        }
-
     try:
-        items, resp_headers = get_products(
-            related_items_recipe = False,
-            feature = feature,
-            user_id = user_id,
-            current_item_id = current_item_id,
-            num_results = num_results,
-            default_inference_arn_param_name='/retaildemostore/personalize/recommended-for-you-arn',
-            default_filter_arn_param_name=filter_ssm,
-            fully_qualify_image_urls = fully_qualify_image_urls,
-            promotion = promotion
+        response = personalize_runtime.get_recommendations(
+            campaignArn = personalize_v2_campaign_arn,
+            userId = user_id,
+            numResults = num_results,
+            # filterArn=filter_ssm,
+            context={
+                'TIMESTAMP': str(int(time.time()))
+            },
+            promotions=[
+                {
+                    'name': "item-promotion-filter",
+                    'percentPromotedItems': 40,
+                    'filterArn': promotion_arn,
+                }
+            ],
         )
+        items = response['itemList']
+        item_ids = [item['itemId'] for item in items]
+        products = fetch_product_details(item_ids, fully_qualify_image_urls)
+        for item in items:
+            item_id = item['itemId']
+            product = next((p for p in products if p['id'] == item_id), None)
+            item.update({
+                'product': product
+            })
+
+            item.pop('itemId')
+        resp_headers={}
+        resp_headers["X-Personalize-Recipe"] = "arn:aws:personalize:::recipe/aws-personalize-v2"
 
         response = Response(json.dumps(items, cls=CompatEncoder), content_type = 'application/json', headers = resp_headers)
 
@@ -523,37 +528,37 @@ def popular():
     feature = request.args.get('feature')
 
     # The default filter is the exclude already purchased and c-store products filter
-    filter_ssm = request.args.get('filter', filter_purchased_cstore_param_name)
-    # We have short names for these filters
-    if filter_ssm == 'cstore':
-        filter_ssm = filter_cstore_param_name
-    elif filter_ssm == 'purchased':
-        filter_ssm = filter_purchased_cstore_param_name
-    app.logger.info(f"Filter SSM for /recommendations: {filter_ssm}")
-
     fully_qualify_image_urls = request.args.get('fullyQualifyImageUrls', '0').lower() in [ 'true', 't', '1']
 
-    promotion = None
-    promotion_filter_arn = get_parameter_values(promotion_filter_no_cstore_param_name)[0]
-    if promotion_filter_arn:
-        promotion = {
-            'name': 'promotedItem',
-            'percentPromotedItems': 25,
-            'filterArn': promotion_filter_arn
-        }
-
     try:
-        items, resp_headers = get_products(
-            related_items_recipe = False,
-            feature = feature,
-            user_id = user_id,
-            current_item_id = current_item_id,
-            num_results = num_results,
-            default_inference_arn_param_name='/retaildemostore/personalize/popular-items-arn',
-            default_filter_arn_param_name=filter_ssm,
-            fully_qualify_image_urls = fully_qualify_image_urls,
-            promotion = promotion
+        response = personalize_runtime.get_recommendations(
+            campaignArn = personalize_v2_campaign_arn,
+            userId = user_id,
+            numResults = num_results,
+            context={
+                'TIMESTAMP': str(int(time.time()))
+            },
+            promotions=[
+                {
+                    'name': "item-popularity-filter",
+                    'percentPromotedItems': 10,
+                    'filterArn': popular_filter_arn,
+                }
+            ],
         )
+        items = response['itemList']
+        item_ids = [item['itemId'] for item in items]
+        products = fetch_product_details(item_ids, fully_qualify_image_urls)
+        for item in items:
+            item_id = item['itemId']
+            product = next((p for p in products if p['id'] == item_id), None)
+            item.update({
+                'product': product
+            })
+
+            item.pop('itemId')
+        resp_headers={}
+        resp_headers["X-Personalize-Recipe"] = "arn:aws:personalize:::recipe/aws-personalize-v2"
 
         response = Response(json.dumps(items, cls=CompatEncoder), content_type = 'application/json', headers = resp_headers)
 
@@ -725,11 +730,11 @@ def rerank():
     try:
         user_id, items, feature = ranking_request_params()
         print('ITEMS', items)
-        response_items, resp_headers = get_ranking(user_id, items, feature)
-        app.logger.debug(f"Response items for reranking: {response_items}")
-        resp = Response(json.dumps(response_items, cls=CompatEncoder), content_type='application/json',
-                        headers=resp_headers)
-        return resp
+        # response_items, resp_headers = get_ranking(user_id, items, feature)
+        # app.logger.debug(f"Response items for reranking: {response_items}")
+        # resp = Response(json.dumps(response_items, cls=CompatEncoder), content_type='application/json',
+        #                 headers=resp_headers)
+        return json.dumps(items)
     except Exception as e:
         app.logger.exception('Unexpected error reranking items', e)
         return json.dumps(items)
@@ -1102,4 +1107,5 @@ if __name__ == '__main__':
 
     app.wsgi_app = LoggingMiddleware(app.wsgi_app)
 
-    app.run(debug=True, host='0.0.0.0', port=80)
+    port = int(os.environ.get('PORT', 8005))
+    app.run(debug=True, host='0.0.0.0', port=port)
