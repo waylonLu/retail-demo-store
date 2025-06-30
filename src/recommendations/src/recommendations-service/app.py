@@ -60,6 +60,9 @@ filter_ssm=os.environ.get('AWS_PERSONALIZE_FILTER')
 promotion_arn=os.environ.get('AWS_PERSONALIZE_PROMOTION_ARN')
 popular_filter_arn = os.environ.get('AWS_PERSONALIZE_ITEM_POPULARITY_FILTER_ARN')
 
+reranking_v2_campaign_arn = os.environ.get('AWS_RERANKING_V2_CAMPAIGN_ARN')
+similar_items_campaign_arn = os.environ.get('AWS_PERSONALIZE_SIMILAR_ITEMS_CAMPAIGN_ARN')
+
 # SSM parameter name for the Personalize filter for purchased and c-store items
 filter_purchased_param_name = '/retaildemostore/personalize/filters/filter-purchased-arn'
 filter_cstore_param_name = '/retaildemostore/personalize/filters/filter-cstore-arn'
@@ -359,15 +362,15 @@ def handle_bad_request(error):
     response.status_code = error.status_code
     return response
 
-@app.route('/')
+@app.route('/personalize/')
 def index():
     return 'Recommendations Service'
 
-@app.route('/health')
+@app.route('/personalize/health')
 def health():
     return 'OK'
 
-@app.route('/related', methods=['GET'])
+@app.route('/personalize/related', methods=['GET'])
 def related():
     """ Returns related products given an item/product.
 
@@ -395,8 +398,9 @@ def related():
     fully_qualify_image_urls = request.args.get('fullyQualifyImageUrls', '0').lower() in [ 'true', 't', '1']
 
     try:
+        campagin_arn = similar_items_campaign_arn if similar_items_campaign_arn else personalize_v2_campaign_arn
         response = personalize_runtime.get_recommendations(
-            campaignArn = personalize_v2_campaign_arn,
+            campaignArn = campagin_arn,
             userId=user_id,
             itemId = current_item_id,
             numResults = num_results,
@@ -410,7 +414,7 @@ def related():
         
         resp_headers={}
         resp_headers['X-Related-Items-Theme'] = "related_items_theme"
-        resp_headers["X-Personalize-Recipe"] = "arn:aws:personalize:::recipe/aws-personalize-v2"
+        resp_headers["X-Personalize-Recipe"] = "arn:aws:personalize:::recipe/" + ("aws-similar-items"if similar_items_campaign_arn else "aws-personalize-v2")
 
         products = fetch_product_details(item_ids, fully_qualify_image_urls)
         for item in items:
@@ -432,7 +436,7 @@ def related():
         app.logger.exception('Unexpected error generating related items', e)
         raise BadRequest(message = 'Unhandled error', status_code = 500)
 
-@app.route('/recommendations', methods=['GET'])
+@app.route('/personalize/recommendations', methods=['GET'])
 def recommendations():
     """ Returns item/product recommendations for a given user in the context
     of a current item (e.g. the user is viewing a product and I want to provide
@@ -472,7 +476,7 @@ def recommendations():
             promotions=[
                 {
                     'name': "item-promotion-filter",
-                    'percentPromotedItems': 40,
+                    'percentPromotedItems': 20,
                     'filterArn': promotion_arn,
                 }
             ],
@@ -500,7 +504,7 @@ def recommendations():
         app.logger.exception('Unexpected error generating recommendations', e)
         raise BadRequest(message = 'Unhandled error', status_code = 500)
 
-@app.route('/popular', methods=['GET'])
+@app.route('/personalize/popular', methods=['GET'])
 def popular():
     """ Returns item/product recommendations for a given user in the context
     of a current item (e.g. the user is viewing a product and I want to provide
@@ -721,7 +725,7 @@ def get_ranking(user_id, items, feature,
 
     return response_items, resp_headers
 
-@app.route('/rerank', methods=['POST'])
+@app.route('/personalize/rerank', methods=['POST'])
 def rerank():
     """
     Gets user ID, items list and feature and gets ranking of items according to reranking campaign.
@@ -729,12 +733,28 @@ def rerank():
     items = []
     try:
         user_id, items, feature = ranking_request_params()
-        print('ITEMS', items)
-        # response_items, resp_headers = get_ranking(user_id, items, feature)
-        # app.logger.debug(f"Response items for reranking: {response_items}")
-        # resp = Response(json.dumps(response_items, cls=CompatEncoder), content_type='application/json',
-        #                 headers=resp_headers)
-        return json.dumps(items)
+        if reranking_v2_campaign_arn:
+            item_ids = [item['id'] for item in items]
+            response = personalize_runtime.get_personalized_ranking(
+                    campaignArn=reranking_v2_campaign_arn,
+                    inputList=item_ids,
+                    userId=user_id
+                )
+            
+            reranking_items = response['personalizedRanking']
+            
+            final_items = []
+            for item in reranking_items:
+                item_id = item['itemId']
+                product = next((p for p in items if p['id'] == item_id), None)
+                final_items.append(product)
+            resp_headers={}
+            resp_headers["X-Personalize-Recipe"] = "arn:aws:personalize:::recipe/aws-Reranking-v2"
+
+            return Response(json.dumps(final_items, cls=CompatEncoder), content_type = 'application/json', headers = resp_headers)
+        else:
+            return json.dumps(items)
+                
     except Exception as e:
         app.logger.exception('Unexpected error reranking items', e)
         return json.dumps(items)
@@ -857,7 +877,7 @@ def get_top_n(user_id, items, feature, top_n,
     return response_items, resp_headers
 
 
-@app.route('/choose_discounted', methods=['POST'])
+@app.route('/personalize/choose_discounted', methods=['POST'])
 def choose_discounted():
     """
     Gets user ID, items list and feature and chooses which items to discount according to the
@@ -953,7 +973,7 @@ def get_offer_by_id(offer_id):
     return offer
 
 
-@app.route('/coupon_offer', methods=['GET'])
+@app.route('/personalize/coupon_offer', methods=['GET'])
 def coupon_offer():
     """
     Returns an offer recommendation for a given user.
@@ -1061,7 +1081,7 @@ def coupon_offer():
         raise BadRequest(message='Unhandled error', status_code=500)
 
 
-@app.route('/experiment/outcome', methods=['POST'])
+@app.route('/personalize/experiment/outcome', methods=['POST'])
 def experiment_outcome():
     """ Tracks an outcome/conversion for an experiment """
     if request.content_type.startswith('application/json'):
@@ -1107,5 +1127,5 @@ if __name__ == '__main__':
 
     app.wsgi_app = LoggingMiddleware(app.wsgi_app)
 
-    port = int(os.environ.get('PORT', 8005))
+    port = int(os.environ.get('RECOMMENDATIONS_FLASK_RUN_PORT', 80))
     app.run(debug=True, host='0.0.0.0', port=port)

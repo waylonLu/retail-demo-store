@@ -73,7 +73,7 @@ export default {
         if (behaviorType) params['behaviorType'] = behaviorType;
         const restOperation = get({
             apiName: apiName,
-            path: `/products/id/${productId}/add_to_cart_event`,
+            path: `${resource}/id/${productId}/add_to_cart_event`,
             options: {
                 queryParams: params
             }

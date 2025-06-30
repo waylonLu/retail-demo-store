@@ -44,23 +44,23 @@ const amplifyConfig = {
   API: {    
     REST: {
       productsService: {
-        endpoint: import.meta.env.VITE_PRODUCTS_API_URL || 'http://localhost:8001',
+        endpoint: import.meta.env.VITE_API_GATEWAY || 'http://localhost:8001',
         region: import.meta.env.VITE_AWS_REGION || 'us-west-2'
       },
       usersService: {
-        endpoint: import.meta.env.VITE_USERS_API_URL || 'http://localhost:8002',
+        endpoint: import.meta.env.VITE_API_GATEWAY || 'http://localhost:8002',
         region: import.meta.env.VITE_AWS_REGION || 'us-west-2'
       },
       cartsService: {
-        endpoint: import.meta.env.VITE_CARTS_API_URL || 'http://localhost:8003',
+        endpoint: import.meta.env.VITE_API_GATEWAY || 'http://localhost:8003',
         region: import.meta.env.VITE_AWS_REGION || 'us-west-2'
       },
       ordersService: {
-        endpoint: import.meta.env.VITE_ORDERS_API_URL || 'http://localhost:8004',
+        endpoint: import.meta.env.VITE_API_GATEWAY || 'http://localhost:8004',
         region: import.meta.env.VITE_AWS_REGION || 'us-west-2'
       },
       recommendationsService: {
-        endpoint: import.meta.env.VITE_RECOMMENDATIONS_API_URL || 'http://localhost:8005',
+        endpoint: import.meta.env.VITE_API_GATEWAY || 'http://localhost:8005',
         region: import.meta.env.VITE_AWS_REGION || 'us-west-2'
       }
     }

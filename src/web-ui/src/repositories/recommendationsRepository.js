@@ -4,13 +4,13 @@ import { get, post } from 'aws-amplify/api';
 
 const apiName = 'recommendationsService';
 
-const popular = "/popular"
-const related = "/related"
-const recommendations = "/recommendations"
-const rerank = "/rerank"
-const chooseDiscounted = "/choose_discounted"
-const couponOffer = "/coupon_offer"
-const experimentOutcome = "/experiment/outcome"
+const popular = "/personalize/popular"
+const related = "/personalize/related"
+const recommendations = "/personalize/recommendations"
+const rerank = "/personalize/rerank"
+const chooseDiscounted = "/personalize/choose_discounted"
+const couponOffer = "/personalize/coupon_offer"
+const experimentOutcome = "/personalize/experiment/outcome"
 
 export default {
     async getPopularProducts(userID, currentItemID, numResults, feature) {
