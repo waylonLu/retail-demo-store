@@ -94,9 +94,9 @@ export default {
       this.openModal(Modals.ShopperSelect);
     },
     signOut() {
-      // 自定义注销逻辑，不依赖 Amplify 的 signOut 方法
-      this.$store.commit('setUser', null);
-      this.$router.push({ path: '/auth' });
+      // 使用 store 中的 logout 方法进行注销
+      this.$store.dispatch('logout');
+      this.$router.push({ path: '/' });
       swal('You have been logged out!');
     },
   },

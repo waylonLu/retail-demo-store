@@ -17,6 +17,8 @@
       console.log('User signed in:', user);
       // 将用户信息设置到状态管理中
       AmplifyStore.commit('setUser', user);
+      // 更新购物车缓存
+      await AmplifyStore.dispatch('getNewCart');
       // 跳转到主页
       router.push({ path: '/' });
       return { 
