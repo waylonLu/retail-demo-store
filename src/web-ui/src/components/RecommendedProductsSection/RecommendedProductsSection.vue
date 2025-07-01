@@ -15,6 +15,7 @@
         v-else
         :recommendedProducts="recommendedProducts"
         :feature="feature"
+        :eventAttributionSource="eventAttributionSource"
         class="col"
       ></ProductCarousel>
     </div>
@@ -40,6 +41,10 @@ export default {
       type: String,
       required: false,
     },
+    eventAttributionSource: {
+        type: String,
+        required: false,
+      },
   },
   components: {
     LoadingFallback,
@@ -47,6 +52,8 @@ export default {
   },
   computed: {
     isLoading() {
+      console.log(this.eventAttributionSource)
+
       return !this.recommendedProducts;
     },
   },

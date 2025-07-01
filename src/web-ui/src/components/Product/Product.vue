@@ -5,7 +5,7 @@
       :to="{
         name: 'ProductDetail',
         params: { id: product.id },
-        query: { feature, exp: experimentCorrelationId },
+        query: { feature, exp: experimentCorrelationId, recommendationId, eventAttributionSource},
       }"
     >
       <div>
@@ -66,6 +66,8 @@ export default {
     experiment: { type: Object, required: false },
     promotionName: { type: String, required: false },
     feature: { type: String, required: true },
+    recommendationId: { type: String, required: false },
+    eventAttributionSource: { type: String, required: false },
   },
 
   data() {

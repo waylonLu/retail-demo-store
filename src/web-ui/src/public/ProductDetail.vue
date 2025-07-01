@@ -69,7 +69,7 @@
           </div>
         </main>
 
-        <RecommendedProductsSection :experiment="experiment" :recommendedProducts="relatedProducts" :feature="feature">
+        <RecommendedProductsSection :experiment="experiment" :recommendedProducts="relatedProducts" :feature="feature" :eventAttributionSource="detailPageRelatedEventAttributionSource">
           <template #heading>
             {{ relatedProductsSectionTitle }}
             <DemoGuideBadge
@@ -139,7 +139,8 @@ export default {
       fenixcurrentvariant: {},
       fenixenablePDP : import.meta.env.VITE_FENIX_ENABLED_PDP,
       loadingPersonalizedProductDescription: false,
-      isDescriptionPersonalized: false
+      isDescriptionPersonalized: false,
+      detailPageRelatedEventAttributionSource: null,
     };
   },
   computed: {
@@ -197,10 +198,7 @@ export default {
       this.quantity = 1;
     },
     async addProductToCart() {
-      console.log('user: ' + JSON.stringify(this.user))
-      console.log('cart: ' + JSON.stringify(this.cart))
-      console.log('product: ' + this.$route.params.id)
-      this.addPersonalizeEvent(this.$route.params.id, this.personalizeUserID, 'AddToCart');
+      this.addPersonalizeEvent(this.$route.params.id, this.personalizeUserID, 'AddToCart', this.$route.query.recommendationId, this.$route.query.eventAttributionSource);
       await this.addToCart({
         product: {
           ...this.product,
@@ -228,8 +226,8 @@ export default {
       this.isDescriptionPersonalized = true
     },
     async fetchData() {
-      console.log("userId:" + this.personalizeUserID)
-      await this.getProductByID(this.$route.params.id, null, this.personalizeUserID, 'View');
+      console.log('re: ' + this.$route.query.recommendationId)
+      await this.getProductByID(this.$route.params.id, null, this.personalizeUserID, 'View', this.$route.query.recommendationId, this.$route.query.eventAttributionSource);
 
       this.fenixcurrentvariant = this.product.id;
 
@@ -256,6 +254,8 @@ export default {
         const experimentName = headers['x-experiment-name'];
         // For composite use cases such as this one, we may get more than one recipe (comma delimited). Use the first recipe to lookup demo badge.
         const personalizeRecipe = headers['x-personalize-recipe'] ? headers['x-personalize-recipe'].split(',')[0] : null;
+        console.log(`Personalize recipe: ${personalizeRecipe}`);
+        this.detailPageRelatedEventAttributionSource = personalizeRecipe
 
         if (experimentName) this.experiment = `Active experiment: ${experimentName}`;
         if (personalizeRecipe) this.demoGuideBadgeArticle = getDemoGuideArticleFromPersonalizeARN(personalizeRecipe);

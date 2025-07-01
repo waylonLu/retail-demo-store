@@ -11,6 +11,7 @@ import json
 import boto3
 import os
 import uuid
+import time
 
 import products_service.products as product_service
 from products_service import auth
@@ -54,6 +55,8 @@ def get_products_by_id(product_ids):
     user = None
     user_id = request.args.get('userId')
     event_type = request.args.get('behaviorType')
+    recommendation_id = request.args.get('recommendationId')
+    event_attribution_source = request.args.get('eventAttributionSource')
     # If the personalization parameter is passed in then Bedrock is called for personalised product descriptions       
     if request.args.get('personalized') == 'true':
         cognito_authentication_provider = request.headers.get('cognitoAuthenticationProvider')
@@ -61,20 +64,29 @@ def get_products_by_id(product_ids):
     
     product = product_service.get_product_by_id(product_ids[0], should_fully_qualify_image_urls(), user)
     if product and event_type:
+        event_param = {
+            'eventType': event_type,
+            'itemId': product.get('id'),
+            'sentAt': int(time.time()),
+            'properties': json.dumps({
+                'DISCOUNT': 'No'
+            })
+        }
+        if recommendation_id:
+            event_param['recommendationId'] = recommendation_id
+            
+        if event_attribution_source:
+            event_param['metricAttribution'] = {
+                'eventAttributionSource': event_attribution_source
+            }
+            
         temp_id = str(uuid.uuid4())
         personalize_event.put_events(
             trackingId=os.environ.get('AWS_PERSONALIZE_TRACKING_ID'),
             userId=user_id if user_id else temp_id,
             sessionId=str(uuid.uuid5(uuid.NAMESPACE_DNS, str(user_id))) if user_id else temp_id,
             eventList=[
-                {
-                    'eventType': event_type,
-                    'itemId': product.get('id'),
-                    'sentAt': datetime.now(),
-                    'properties': json.dumps({
-                        'DISCOUNT': 'No'
-                    })
-                },
+                event_param
             ]
         )
     if not product:
@@ -98,23 +110,34 @@ def update_products_by_id(product_id):
 def add_to_cart_event_products_by_id(product_id):
     user_id = request.args.get('userId')
     event_type = request.args.get('behaviorType')
+    recommendation_id = request.args.get('recommendationId')
+    event_attribution_source = request.args.get('eventAttributionSource')
     
     product = product_service.get_product_by_id(product_id, should_fully_qualify_image_urls(), None)
     if product and event_type:
+        event_param = {
+            'eventType': event_type,
+            'itemId': product.get('id'),
+            'sentAt': int(time.time()),
+            'properties': json.dumps({
+                'DISCOUNT': 'No'
+            })
+        }
+        if recommendation_id:
+            event_param['recommendationId'] = recommendation_id
+            
+        if event_attribution_source:
+            event_param['metricAttribution'] = {
+                'eventAttributionSource': event_attribution_source
+            }
+            
         temp_id = str(uuid.uuid4())
         personalize_event.put_events(
             trackingId=os.environ.get('AWS_PERSONALIZE_TRACKING_ID'),
             userId=user_id if user_id else temp_id,
             sessionId=str(uuid.uuid5(uuid.NAMESPACE_DNS, str(user_id))) if user_id else temp_id,
             eventList=[
-                {
-                    'eventType': event_type,
-                    'itemId': product.get('id'),
-                    'sentAt': datetime.now(),
-                    'properties': json.dumps({
-                        'DISCOUNT': 'No'
-                    })
-                },
+                event_param
             ]
         )
 

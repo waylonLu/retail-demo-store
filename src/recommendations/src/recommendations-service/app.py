@@ -410,17 +410,19 @@ def related():
             }
         )
         items = response['itemList']
+        recommendation_id=response['recommendationId']
         item_ids = [item['itemId'] for item in items]
         
         resp_headers={}
         resp_headers['X-Related-Items-Theme'] = "related_items_theme"
-        resp_headers["X-Personalize-Recipe"] = "arn:aws:personalize:::recipe/" + ("aws-similar-items"if similar_items_campaign_arn else "aws-personalize-v2")
+        resp_headers["X-Personalize-Recipe"] = "aws-similar-items"if similar_items_campaign_arn else "aws-personalize-v2"
 
         products = fetch_product_details(item_ids, fully_qualify_image_urls)
         for item in items:
             item_id = item['itemId']
 
             product = next((p for p in products if p['id'] == item_id), None)
+            product.update({'recommendation_id': recommendation_id})
             item.update({
                 'product': product
             })
@@ -482,18 +484,20 @@ def recommendations():
             ],
         )
         items = response['itemList']
+        recommendation_id=response['recommendationId']
         item_ids = [item['itemId'] for item in items]
         products = fetch_product_details(item_ids, fully_qualify_image_urls)
         for item in items:
             item_id = item['itemId']
             product = next((p for p in products if p['id'] == item_id), None)
+            product.update({'recommendation_id': recommendation_id})
             item.update({
                 'product': product
             })
 
             item.pop('itemId')
         resp_headers={}
-        resp_headers["X-Personalize-Recipe"] = "arn:aws:personalize:::recipe/aws-personalize-v2"
+        resp_headers["X-Personalize-Recipe"] = "aws-personalize-v2"
 
         response = Response(json.dumps(items, cls=CompatEncoder), content_type = 'application/json', headers = resp_headers)
 
@@ -551,18 +555,20 @@ def popular():
             ],
         )
         items = response['itemList']
+        recommendation_id=response['recommendationId']
         item_ids = [item['itemId'] for item in items]
         products = fetch_product_details(item_ids, fully_qualify_image_urls)
         for item in items:
             item_id = item['itemId']
             product = next((p for p in products if p['id'] == item_id), None)
+            product.update({'recommendation_id': recommendation_id})
             item.update({
                 'product': product
             })
 
             item.pop('itemId')
         resp_headers={}
-        resp_headers["X-Personalize-Recipe"] = "arn:aws:personalize:::recipe/aws-personalize-v2"
+        resp_headers["X-Personalize-Recipe"] = "aws-personalize-v2"
 
         response = Response(json.dumps(items, cls=CompatEncoder), content_type = 'application/json', headers = resp_headers)
 
@@ -742,14 +748,16 @@ def rerank():
                 )
             
             reranking_items = response['personalizedRanking']
+            recommendation_id=response['recommendationId']
             
             final_items = []
             for item in reranking_items:
                 item_id = item['itemId']
                 product = next((p for p in items if p['id'] == item_id), None)
+                product.update({'recommendation_id': recommendation_id})
                 final_items.append(product)
             resp_headers={}
-            resp_headers["X-Personalize-Recipe"] = "arn:aws:personalize:::recipe/aws-Reranking-v2"
+            resp_headers["X-Personalize-Recipe"] = "aws-reranking-v2"
 
             return Response(json.dumps(final_items, cls=CompatEncoder), content_type = 'application/json', headers = resp_headers)
         else:

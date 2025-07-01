@@ -33,6 +33,8 @@
               :experiment="item.experiment"
               :promotionName="item.promotionName"
               :feature="featureUserRecs"
+              :recommendationId="item.product?.recommendation_id"
+              :eventAttributionSource="homePageEventAttributionSource"
             ></Product>
           </div>
         </div>
@@ -49,6 +51,7 @@
         :feature="featureRerank"
         :recommendedProducts="featuredProducts"
         :experiment="featuredProductsExperiment"
+        :eventAttributionSource="rerankingEventAttributionSource"
       >
         <template #heading>
           Featured products
@@ -106,6 +109,8 @@ export default {
       userRecommendations: null,
       recommendationsExperiment: null,
       userRecommendationsTitle: null,
+      homePageEventAttributionSource: null,
+      rerankingEventAttributionSource: null,
     };
   },
   computed: {
@@ -143,6 +148,7 @@ export default {
         const rerankedProducts = await body.json();
         const personalizeRecipe = headers['x-personalize-recipe'];
         const experimentName = headers['x-experiment-name'];
+        this.rerankingEventAttributionSource = personalizeRecipe
 
         if (personalizeRecipe)
           this.featuredProductsDemoGuideBadgeArticle = getDemoGuideArticleFromPersonalizeARN(personalizeRecipe);
@@ -188,6 +194,7 @@ export default {
       if (headers) {
         const experimentName = headers['x-experiment-name'];
         const personalizeRecipe = headers['x-personalize-recipe'];
+        this.homePageEventAttributionSource = personalizeRecipe
 
         if (experimentName || personalizeRecipe) {
           if (experimentName) this.recommendationsExperiment = `Active experiment: ${experimentName}`;

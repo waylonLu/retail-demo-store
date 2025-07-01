@@ -22,7 +22,7 @@ export default {
         const { body } = await restOperation.response;
         return body.json();
     },
-    async getProduct(productID, personalized, userId, behaviorType) {
+    async getProduct(productID, personalized, userId, behaviorType, recommendationId, eventAttributionSource) {
         if (!productID || productID.length == 0)
             throw "productID required"
         if (Array.isArray(productID))
@@ -38,6 +38,9 @@ export default {
         if (behaviorType) {
             params['behaviorType'] = behaviorType;
         }
+        if (recommendationId) params['recommendationId'] = recommendationId;
+        if (eventAttributionSource) params['eventAttributionSource'] = eventAttributionSource;
+
         const restOperation = get({
             apiName: apiName,
             path: `${resource}/id/${productID}`,
@@ -66,11 +69,13 @@ export default {
         const { body } = await restOperation.response;
         return body.json();
     },
-    async addToCartPersonalizedEvent(productId, userId, behaviorType) {
+    async addToCartPersonalizedEvent(productId, userId, behaviorType, recommendationId, eventAttributionSource) {
         if (!productId) throw "productID required";
         const params = {};
         if (userId) params['userId'] = userId;
         if (behaviorType) params['behaviorType'] = behaviorType;
+        if (recommendationId) params['recommendationId'] = recommendationId;
+        if (eventAttributionSource) params['eventAttributionSource'] = eventAttributionSource;
         const restOperation = get({
             apiName: apiName,
             path: `${resource}/id/${productId}/add_to_cart_event`,

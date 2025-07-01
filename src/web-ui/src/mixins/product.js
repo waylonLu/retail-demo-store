@@ -35,14 +35,14 @@ export const product = {
     },
   },
   methods: {
-    async getProductByID(product_id, personalized, userId, behaviorType) {
-      this.product = await ProductsRepository.getProduct(product_id, personalized, userId, behaviorType);
+    async getProductByID(product_id, personalized, userId, behaviorType, recommendationId, eventAttributionSource) {
+      this.product = await ProductsRepository.getProduct(product_id, personalized, userId, behaviorType, recommendationId, eventAttributionSource);
     },
     async getPersonalizedProduct(product_id) {
       this.product.description = (await ProductsRepository.getProduct(product_id, true)).description;
     },
-    async addPersonalizeEvent(product_id, userId, behaviorType) {
-      await ProductsRepository.addToCartPersonalizedEvent(product_id, userId, behaviorType);
+    async addPersonalizeEvent(product_id, userId, behaviorType, recommendationId, eventAttributionSource) {
+      await ProductsRepository.addToCartPersonalizedEvent(product_id, userId, behaviorType, recommendationId, eventAttributionSource);
     },
     recordProductViewed(feature, exp, discount) {
       AnalyticsHandler.productViewed(this.user, this.product, feature, exp, discount);

@@ -59,6 +59,8 @@
               :product="product"
               :experiment="product.experiment"
               :feature="feature"
+              :recommendationId="product.recommendation_id"
+              :eventAttributionSource="rerankingEventAttributionSource"
             />
           </div>
         </div>
@@ -101,7 +103,8 @@ export default {
       display: '',
       selectedGenders: [],
       selectedStyles: [],
-      isInitiallyMobile: window.matchMedia('(max-width: 992px)').matches
+      isInitiallyMobile: window.matchMedia('(max-width: 992px)').matches,
+      rerankingEventAttributionSource: null,
     }
   },
   created () {
@@ -146,6 +149,7 @@ export default {
         if (headers) {
           const personalizeRecipe = headers['x-personalize-recipe'];
           const experimentName = headers['x-experiment-name'];
+          this.rerankingEventAttributionSource = personalizeRecipe
 
           if (personalizeRecipe) this.demoGuideBadgeArticle = getDemoGuideArticleFromPersonalizeARN(personalizeRecipe);
 
