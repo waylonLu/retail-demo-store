@@ -145,6 +145,7 @@ import FenixCheckout from '@/components/Fenix/FenixCheckout.vue';
 
 const CartsRepository = RepositoryFactory.get('carts')
 const OrdersRepository = RepositoryFactory.get('orders')
+const ProductsRepository = RepositoryFactory.get('products')
 
 export default {
   name: 'Checkout',
@@ -251,6 +252,11 @@ export default {
       })
     },
     submitOrder (callback) {
+      this.cart?.items.map(item => {
+        console.log('submitOrder similar item purchase: ', item.product_id)
+        ProductsRepository.addToCartPersonalizedEvent(item.product_id, this.user.id, 'Purchase')
+      })
+      return;
 
       if (this.collection) {
         this.order.shipping_address = {}
